@@ -2,6 +2,7 @@ import os
 import random
 from flask import Flask, request, redirect, session, flash, render_template_string
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev_key")
@@ -10,14 +11,14 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 ### МОДЕЛИ ###
-class Casino(db.Model):
-    __tablename__ = "casino"
+class CasinoUser(db.Model):
+    __tablename__ = "casino_users"  # ✅ исправлено имя таблицы
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(64), unique=True, nullable=False)
     balance = db.Column(db.Integer, default=0)
 
-class CC(db.Model):
-    __tablename__ = "cc"
+class CasinoCode(db.Model):
+    __tablename__ = "casino_codes"  # ✅ исправлено имя таблицы
     code = db.Column(db.String(64), primary_key=True)
     amount = db.Column(db.Integer, nullable=False)
     total_activation = db.Column(db.Integer, nullable=False)
@@ -56,17 +57,17 @@ def login():
             flash("Invalid code length.")
             return render_template_string(login_html)
 
-        player = Casino.query.filter_by(code=code).first()
+        player = CasinoUser.query.filter_by(code=code).first()
         if player:
             session["uid"] = player.id
             return redirect("/game")
 
-        code_data = CC.query.filter_by(code=code).first()
+        code_data = CasinoCode.query.filter_by(code=code).first()
         if not code_data or code_data.total_activation <= 0:
             flash("Code not found or all activations used.")
             return render_template_string(login_html)
 
-        new_player = Casino(code=code, balance=code_data.amount)
+        new_player = CasinoUser(code=code, balance=code_data.amount)
         code_data.total_activation -= 1
         db.session.add(new_player)
         db.session.commit()
@@ -104,7 +105,7 @@ def logout():
 
 def get_player():
     uid = session.get("uid")
-    return Casino.query.get(uid) if uid else None
+    return CasinoUser.query.get(uid) if uid else None
 
 def check_win(grid):
     reward = 0
