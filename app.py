@@ -305,6 +305,7 @@ game_html = """
 </body>
 </html>
 
+"""
 ### РОУТЫ ###
 
 @app.route("/", methods=["GET", "POST"])
