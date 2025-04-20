@@ -53,62 +53,257 @@ login_html = """
 """
 
 game_html = """
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-    <title>WNA CASINO</title>
-    <style>
-        body { background: url('/static/main.png') no-repeat center center fixed; background-size: cover; font-family: monospace; color: #fff; text-align: center; }
-        .balance { margin: 20px; font-size: 24px; }
-        .balance a { color: #fff; text-decoration: none; padding: 5px 10px; background: #444; border-radius: 5px; margin-left: 10px; }
-        .grid { font-size: 26px; margin-top: 20px; white-space: pre; }
-        .controls { margin-top: 20px; }
-        .controls button, input { margin: 5px; padding: 10px 20px; font-size: 18px; background: #555; color: #fff; border: none; border-radius: 8px; }
-        .controls button:hover { background: #777; cursor: pointer; }
-        .popup { display: {{ 'block' if show_popup else 'none' }}; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; padding: 20px; border: 2px solid #fff; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Слот-машина</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .top-left, .top-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .balance-code {
+      position: relative;
+    }
+
+    #codeInputContainer {
+      position: absolute;
+      top: 25px;
+      right: 0;
+      display: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-template-rows: repeat(3, 60px);
+      gap: 10px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #111;
+      border: 2px solid #555;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bottom-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 10px;
+      margin-bottom: 20px;
+    }
+
+    .bet-input {
+      width: 100px;
+      padding: 5px;
+      text-align: center;
+    }
+
+    .spin-button {
+      padding: 10px 30px;
+      font-size: 18px;
+      cursor: pointer;
+      background: #28a745;
+      border: none;
+      color: white;
+      margin-top: 20px;
+    }
+
+    .spin-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
-    <div class="balance">
-        Balance: {{ balance }}
-        <a href="?topup=1">+</a>
-        <a href="/logout">Logout</a>
+
+<div class="container">
+  <div class="top-bar">
+    <div class="top-left">
+      <label>Авто-спин:</label>
+      <select id="autospin">
+        <option value="off">Выкл</option>
+        <option value="on">Вкл</option>
+      </select>
+      <label>Кол-во:</label>
+      <input type="number" id="autospinCount" min="0" value="0" style="width: 50px;">
     </div>
 
-    {% if show_popup %}
-    <div class="popup">
-        <form method="post">
-            <p>Enter top-up code:</p>
-            <input name="topup_code" maxlength=64>
-            <button type="submit">Submit</button>
-        </form>
+    <div class="top-right">
+      <div>Баланс: <span id="balance">100</span></div>
+      <div class="balance-code">
+        <button onclick="toggleCodeInput()">+</button>
+        <div id="codeInputContainer">
+          <input type="text" id="codeInput" placeholder="Введите код">
+          <button onclick="applyCode()">ОК</button>
+        </div>
+      </div>
     </div>
-    {% endif %}
+  </div>
 
-    <form method="post" class="controls">
-        <input name="bet" type="number" value="{{ bet }}" min="1" placeholder="Bet">
-        <button name="spin" value="1">СПИН</button>
-        <button name="toggle_auto" value="1">{{ 'Выкл' if auto else 'Вкл' }}</button>
-        {% if auto %}
-            <button name="auto_spin" value="1">Авто-спин ({{ auto_left }})</button>
-        {% endif %}
-    </form>
+  <div class="grid" id="slotGrid">
+    <!-- 15 ячеек 3x5 -->
+    <div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div>
+    <div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div>
+    <div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div><div class="cell">0</div>
+  </div>
 
-    {% if grid %}
-    <div class="grid">
-        {% for row in grid %}{{ row }}\n{% endfor %}
+  <div class="bottom-controls">
+    <div>
+      <label>Ставка:</label>
+      <input type="number" id="bet" class="bet-input" min="10" max="1000" value="10">
     </div>
-    <p>{{ result }}</p>
-    {% endif %}
+    <div>
+      <label>Пропуск анимации:</label>
+      <select id="skipAnimation">
+        <option value="off">Выкл</option>
+        <option value="on">Вкл</option>
+      </select>
+    </div>
+  </div>
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul style="color: red;">{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>
-      {% endif %}
-    {% endwith %}
+  <button class="spin-button" id="spinButton" onclick="startSpin()">СПИН</button>
+</div>
+
+<script>
+  let balance = 100;
+  let autoSpinning = false;
+
+  const cells = Array.from(document.querySelectorAll(".cell"));
+
+  function toggleCodeInput() {
+    const input = document.getElementById("codeInputContainer");
+    input.style.display = input.style.display === "block" ? "none" : "block";
+  }
+
+  function applyCode() {
+    const code = document.getElementById("codeInput").value.trim();
+    // Тут будет запрос к серверу для проверки кода и пополнения баланса
+    if (code === "DEMO123") {
+      balance += 100;
+      updateBalance();
+      alert("Баланс пополнен!");
+    } else {
+      alert("Неверный код");
+    }
+    document.getElementById("codeInput").value = "";
+    document.getElementById("codeInputContainer").style.display = "none";
+  }
+
+  function updateBalance() {
+    document.getElementById("balance").textContent = balance;
+  }
+
+  function startSpin() {
+    const bet = parseInt(document.getElementById("bet").value);
+    const skip = document.getElementById("skipAnimation").value === "on";
+    const autoSpin = document.getElementById("autospin").value === "on";
+    let autoCount = parseInt(document.getElementById("autospinCount").value);
+
+    if (autoSpinning && autoCount > 0) {
+      alert("Авто-спин активен, подождите");
+      return;
+    }
+
+    if (bet > balance) {
+      alert("Недостаточно средств!");
+      return;
+    }
+
+    balance -= bet;
+    updateBalance();
+
+    if (autoSpin && autoCount > 0) {
+      autoSpinning = true;
+      document.getElementById("spinButton").disabled = true;
+    }
+
+    const doSpin = (col = 0) => {
+      if (skip) {
+        for (let i = 0; i < 15; i++) {
+          cells[i].textContent = Math.floor(Math.random() * 9) + 1;
+        }
+        afterSpin();
+        return;
+      }
+
+      if (col >= 5) {
+        afterSpin();
+        return;
+      }
+
+      let colIndices = [col, col + 5, col + 10];
+      let interval = setInterval(() => {
+        colIndices.forEach(i => {
+          cells[i].textContent = Math.floor(Math.random() * 9) + 1;
+        });
+      }, 100);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        colIndices.forEach(i => {
+          cells[i].textContent = Math.floor(Math.random() * 9) + 1;
+        });
+        doSpin(col + 1);
+      }, 800);
+    };
+
+    doSpin();
+  }
+
+  function afterSpin() {
+    let autoCount = parseInt(document.getElementById("autospinCount").value);
+    if (document.getElementById("autospin").value === "on" && autoCount > 0) {
+      autoCount--;
+      document.getElementById("autospinCount").value = autoCount;
+      if (autoCount > 0) {
+        setTimeout(startSpin, 1500);
+      } else {
+        autoSpinning = false;
+        document.getElementById("spinButton").disabled = false;
+      }
+    } else {
+      autoSpinning = false;
+      document.getElementById("spinButton").disabled = false;
+    }
+  }
+</script>
+
 </body>
 </html>
-"""
 
 ### РОУТЫ ###
 
